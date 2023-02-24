@@ -1,15 +1,12 @@
 # Project 1: File Search Utility
-
-See: https://www.cs.usfca.edu/~mmalensek/cs521/assignments/project-1.html
-
-TODO: Remove the link above. Your README should not depend on a link to the spec.
-
-TODO: Add a short description of the project: what it does, how it does it, and any special features it has. Include instructions on how to build and run the program, with examples.
-
+This program searches for directories and files with optional search pattern matching. The search pattern matching can be either exact or partial. It works by specifying the directory for which to search and then recursively searches through that directory. By default it prints out all the directories and files it contains. However, the program takes command line arguments which allow the user to specify the following: 
+"-d": Only display directories (no files).
+"-e": Match search pattern exactly; no partial matches reported.
+"-f": Only display files (no directories).
+"-h": Display hidden files.
+"-l depth-limit": Set a depth limit
+"-H": Display help/usage information.
 ## Building
-
-TODO
-
+To build the program you can use the following command: gcc search.c -o search
 ## Running + Example Usage
-
-TODO
+To run the program you can specify the search directory and any additional options you want to use. For example if you are searching for a file that you remember contains the word 'hello' within a directory called 'my_directory' you can use the following command: ./search my_directory -f hello
