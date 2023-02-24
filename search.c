@@ -1,6 +1,6 @@
 /**
  * @file search.c
- * @author Your Name Here
+ * @author Nitzan Saar
  *
  * This program is a file search utility inspired by find(1). At its core, it
  * recursively traverses a directory structure and reports its contents with a
@@ -19,12 +19,12 @@
 
 struct options {
     int max_depth;
-    bool exact_match : 1;
+    bool exact_match : 1; // these are bitfields (1 bit each)
     bool show_dirs : 1;
     bool show_files : 1;
     bool show_hidden : 1;
 };
-
+//-1 is default depth
 struct options default_options = {-1, false, true, true, false};
 
 /**
@@ -47,22 +47,94 @@ void print_usage(char *prog_name)
     printf("\n");
 }
 
+
+int recursive_search(struct options *opts, char *directory, char *search_term, int depth) {
+    DIR *dir = opendir(directory);
+    if (dir == NULL) {
+        perror("opendir");
+        return 1;
+    }
+    struct dirent *entry;
+    while ((entry = readdir(dir)) != NULL) {
+        if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0) {
+            continue;
+        }
+        // stop recursing once we reach the max depth - if it is not specified then it won't stop
+        if (depth == opts->max_depth) {
+            return 0;
+        }
+        // allocate memory
+        char *buf = malloc(strlen(directory) + strlen(entry->d_name) + strlen("/") + 1);
+        if (buf == NULL) {
+            perror("malloc");
+            break;
+        }
+        sprintf(buf, "%s/%s", directory, entry->d_name);
+        if (entry->d_type == DT_DIR) {
+            if (strstr(entry->d_name, search_term) != NULL && opts->show_dirs == true) {
+                printf("%s\n", buf);
+            }
+            // increase depth by 1 each time we make a recursive call
+            recursive_search(opts, buf, search_term, depth + 1);
+        // if d_type is a file and show_files is true
+        } else if (entry->d_type == DT_REG && opts->show_files == true) {
+            // don't print a hidden file if show_hidden is false
+            if (opts->show_hidden == false && entry->d_name[0] == '.') {
+                continue;
+            }
+            else if (strstr(entry->d_name, search_term) != NULL) {  
+                if (opts->exact_match == true) {
+                    if (strcmp(search_term, entry->d_name) == 0) {
+                        printf("%s\n", buf);
+                    }
+                } else {
+                    printf("%s\n", buf);
+                }
+            }
+        }
+        free(buf);
+    }
+    closedir(dir);
+    return 0;
+}
+
+
+
 int main(int argc, char *argv[]) {
-    /* Create a struct to hold our default options. We can update this as we
-     * parse through the command line arguments. */
+
     struct options opts;
     opts = default_options;
-
     int c;
     opterr = 0;
+
     while ((c = getopt(argc, argv, "defhHl:")) != -1) {
         switch (c) {
             case 'd':
-                // handle option 'd' here, then 'break' to keep parsing...
+                opts.show_files = false;
                 break;
             case 'H':
                 print_usage(argv[0]);
                 return 1;
+            case 'h':
+                opts.show_hidden = true;
+                break;
+            case 'e':
+                opts.exact_match = true;
+                break;
+            case 'f':
+                opts.show_dirs = false;
+                break;
+            case 'l': {
+                char *num_string = optarg;
+                int depth_limit = atoi(num_string);
+                    if (depth_limit <= 0) {
+                        perror("Invalid limit");
+                        print_usage(argv[0]);
+                        return 1;
+            }
+                opts.max_depth = depth_limit;
+            }
+                break;
             case '?':
                 if (optopt == 's') {
                     fprintf(stderr, "Option -%c requires an argument.\n", optopt);
@@ -105,10 +177,6 @@ int main(int argc, char *argv[]) {
             opts.show_dirs ? "ON" : "OFF",
             opts.show_hidden ? "ON" : "OFF");
 
-    // TODO: call your recursive directory traversal function here.
-    //       Hint: you may also want to design a function that determines
-    //       whether a file/directory should be printed or not based on the
-    //       options that we just configured above.
-
-    return 0;
+    // by default pass in 0 as the depth because if depth isn't specified it wont matter
+    return recursive_search(&opts, dir, search, 0);
 }
